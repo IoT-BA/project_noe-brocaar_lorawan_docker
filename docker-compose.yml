@@ -68,7 +68,9 @@ services:
       - POSTGRES_DB=loraserver
 
   redis:
-    image: redis:3.0.7-alpine
+    image: redis:3.0-alpine
 
   mosquitto:
     image: ansi/mosquitto
+    ports:
+      - "1883/tcp:1883/tcp"
