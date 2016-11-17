@@ -1,0 +1,68 @@
+version: '2'
+services:
+  gatewaybridge:
+    build:
+      context: .
+      dockerfile: Dockerfile-gatewaybridge
+    container_name: gatewaybridge
+    command: ./lora-gateway-bridge
+    ports:
+      - "1700/udp:1700/udp"
+    links:
+      - mosquitto
+    environment:
+      - MQTT_SERVER=tcp://mosquitto:1883
+      - TEST_MQTT_SERVER=tcp://mosquitto:1883
+
+  loraserver:
+    build:
+      context: .
+      dockerfile: Dockerfile-loraserver
+    container_name: loraserver
+    command: ./build/loraserver --band EU_863_870
+    links:
+      - postgres
+      - redis
+      - mosquitto
+    environment:
+      - POSTGRES_DSN=postgres://loraserver:loraserver@postgres/loraserver?sslmode=disable
+      - DB_AUTOMIGRATE=true
+      - NET_ID=010203
+      - REDIS_URL=redis://redis:6379
+      - GW_MQTT_SERVER=tcp://mosquitto:1883
+      - APP_MQTT_SERVER=tcp://mosquitto:1883
+
+  loraappserver:
+    build:
+      context: .
+      dockerfile: Dockerfile-loraappserver
+    container_name: loraappserver
+    command: make serve
+    ports:
+      - "8080/tcp:8080/tcp"
+    links:
+      - postgres
+      - redis
+      - mosquitto
+    environment:
+      - DB_AUTOMIGRATE=true
+      - POSTGRES_DSN=postgres://loraserver:loraserver@postgres/loraserver?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - MQTT_SERVER=tcp://mosquitto:1883
+    depends_on:
+      - postgres
+      - redis
+      - mosquitto
+
+  postgres:
+    image: postgres:9.5
+    environment:
+      - POSTGRES_PASSWORD=loraserver
+      - POSTGRES_USER=loraserver
+      - POSTGRES_DB=loraserver
+
+  redis:
+    image: redis:3.0.7-alpine
+
+  mosquitto:
+    image: ansi/mosquitto
