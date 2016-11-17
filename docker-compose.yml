@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile-gatewaybridge
     container_name: gatewaybridge
-    command: ./lora-gateway-bridge
+    command: ./build/lora-gateway-bridge
     ports:
       - "1700/udp:1700/udp"
     links:
@@ -31,6 +31,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - GW_MQTT_SERVER=tcp://mosquitto:1883
       - APP_MQTT_SERVER=tcp://mosquitto:1883
+      - AS_HOST=loraappserver:8001
 
   loraappserver:
     build:
@@ -49,13 +50,18 @@ services:
       - POSTGRES_DSN=postgres://loraserver:loraserver@postgres/loraserver?sslmode=disable
       - REDIS_URL=redis://redis:6379
       - MQTT_SERVER=tcp://mosquitto:1883
+      - HTTP_TLS_CERT=/opt/lora-app-server/certs/http.pem
+      - HTTP_TLS_KEY=/opt/lora-app-server/certs/http-key.pem
+      - NS_SERVER=loraserver:8000
+    volumes:
+      - ./certs:/opt/lora-app-server/certs
     depends_on:
       - postgres
       - redis
       - mosquitto
 
   postgres:
-    image: postgres:9.5
+    image: postgres:9
     environment:
       - POSTGRES_PASSWORD=loraserver
       - POSTGRES_USER=loraserver
