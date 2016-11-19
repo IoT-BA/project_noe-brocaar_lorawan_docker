@@ -38,7 +38,7 @@ services:
       context: .
       dockerfile: Dockerfile-loraappserver
     container_name: loraappserver
-    command: make serve
+    command: ./build/lora-app-server
     ports:
       - "8080/tcp:8080/tcp"
     links:
