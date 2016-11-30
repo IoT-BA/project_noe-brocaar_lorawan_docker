@@ -10,6 +10,6 @@ RUN go get github.com/kisielk/errcheck
 # setup work directory
 RUN mkdir -p $PROJECT_PATH
 WORKDIR $PROJECT_PATH
-RUN git clone https://github.com/brocaar/lora-gateway-bridge.git
+RUN git clone https://github.com/brocaar/lora-gateway-bridge/releases/tag/2.1.2
 WORKDIR $PROJECT_PATH/lora-gateway-bridge
 RUN make build
