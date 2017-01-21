@@ -31,7 +31,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - GW_MQTT_SERVER=tcp://mosquitto:1883
       - APP_MQTT_SERVER=tcp://mosquitto:1883
-      - AS_HOST=loraappserver:8001
+      - AS_SERVER=loraappserver:8001
 
   loraappserver:
     build:
