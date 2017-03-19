@@ -1,3 +1,5 @@
+Docker compose to build the entire Brocaars LoraWAN implementation (all parts of it)
+
 Running / building the Docker images:
 
 ```bash
