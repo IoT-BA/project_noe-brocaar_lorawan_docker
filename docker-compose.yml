@@ -1,30 +1,15 @@
 version: '2'
 services:
-  gatewaybridge:
-    build:
-      context: .
-      dockerfile: Dockerfile-gatewaybridge
-    container_name: gatewaybridge
-    command: ./build/lora-gateway-bridge
-    ports:
-      - "1700/udp:1700/udp"
-    links:
-      - mosquitto
-    environment:
-      - MQTT_SERVER=tcp://mosquitto:1883
-      - TEST_MQTT_SERVER=tcp://mosquitto:1883
-
   loraserver:
-    build:
-      context: .
-      dockerfile: Dockerfile-loraserver
+    image: iotba/loraserver:latest
     container_name: loraserver
-    command: ./build/loraserver --band EU_863_870
     links:
       - postgres
       - redis
       - mosquitto
+      - nginx
     environment:
+      - BAND=EU_863_870
       - POSTGRES_DSN=postgres://loraserver:loraserver@postgres/loraserver?sslmode=disable
       - DB_AUTOMIGRATE=true
       - NET_ID=010203
@@ -34,13 +19,10 @@ services:
       - AS_SERVER=loraappserver:8001
 
   loraappserver:
-    build:
-      context: .
-      dockerfile: Dockerfile-loraappserver
-    container_name: loraappserver
-    command: ./build/lora-app-server
+    image: iotba/lora-app-server:latest
+    container_name: lora-app-server
     ports:
-      - "8080/tcp:8080/tcp"
+      - "8080:8080/tcp"
     links:
       - postgres
       - redis
@@ -50,15 +32,18 @@ services:
       - POSTGRES_DSN=postgres://loraserver:loraserver@postgres/loraserver?sslmode=disable
       - REDIS_URL=redis://redis:6379
       - MQTT_SERVER=tcp://mosquitto:1883
-      - HTTP_TLS_CERT=/opt/lora-app-server/certs/http.pem
-      - HTTP_TLS_KEY=/opt/lora-app-server/certs/http-key.pem
       - NS_SERVER=loraserver:8000
+      - JWT-SECRET=secret
+      - HTTP_TLS_CERT=/etc/letsencrypt/live/lorawan.project-noe.org/cert.pem
+      - HTTP_TLS_KEY=/etc/letsencrypt/live/lorawan.project-noe.org/privkey.pem
     volumes:
       - ./certs:/opt/lora-app-server/certs
     depends_on:
       - postgres
       - redis
       - mosquitto
+      - nginx
+      - letsencrypt
 
   postgres:
     image: postgres:9
@@ -74,3 +59,34 @@ services:
     image: ansi/mosquitto
     ports:
       - "1883/tcp:1883/tcp"
+  nginx:
+    restart: always
+    image: nginx
+    hostname: lorawan.project-noe.org
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./nginx:/etc/nginx:ro
+      - ./letsencrypt/conf:/etc/letsencrypt
+      - ./letsencrypt/html:/tmp/letsencrypt
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - LE_RENEW_HOOK=docker kill -s HUP @CONTAINER_NAME@
+
+  letsencrypt:
+    restart: always
+    image: kvaps/letsencrypt-webroot
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./letsencrypt/conf:/etc/letsencrypt
+      - ./letsencrypt/html:/tmp/letsencrypt
+    links:
+      - nginx
+    environment:
+      - DOMAINS=lorawan.project-noe.org lorawan.project-noe.org
+      - EMAIL=david.koszeghy@makers.sk
+      - WEBROOT_PATH=/tmp/letsencrypt
+      - EXP_LIMIT=30
+      - CHECK_FREQ=30
